@@ -17,7 +17,7 @@ CREATE TABLE Surveys
 	CONSTRAINT PK_SurveyID PRIMARY KEY (SurveyID)
 )
 GO
-CREATE TABLE SurveyInstance 
+CREATE TABLE SurveyResponse
 (
 	SurveyID INT NOT NULL,
 	MemberID INT NULL,
@@ -37,7 +37,29 @@ CREATE TABLE Questions
 	CONSTRAINT FK_QuestionsSurveys FOREIGN KEY (SurveyID) REFERENCES Surveys(SurveyID),
 )
 GO
-CREATE TABLE 
+CREATE TABLE Choices
 (
+	ChoiceID INT NOT NULL,
+	QuestionID INT NOT NULL,
+	SurveyID INT NOT NULL,
+	ChoiceText NVARCHAR(120),
+	CONSTRAINT PK_Choices PRIMARY KEY (ChoiceID, QuestionID, SurveyID),
+	CONSTRAINT FK_ChoicesQuestions FOREIGN KEY (QuestionID, SurveyID) REFERENCES Questions(QuestionID, SurveyID)
+)
+GO
+CREATE TABLE QuestionResponse
+(	
+	QuestionID INT NOT NULL,
+	SurveyID INT NOT NULL,
+	SurveyResponseID INT NOT NULL,
+	ResponseText NVARCHAR(1),
+	CONSTRAINT PK_QuestionResponse PRIMARY KEY (QuestionID, SurveyID, SurveyResponseID),
+	CONSTRAINT FK_QuestionResponseQuestions FOREIGN KEY (QuestionID, SurveyID) REFERENCES Questions(QuestionID),
+	CONSTRAINT FK_QuestionResponseSurveyResponse FOREIGN KEY (SurveyResponseID) REFERENCES SurveyResponse(SurveyResponseID)
+)
+GO
+CREATE TABLE Attributes
+(
+	
 )
 GO
