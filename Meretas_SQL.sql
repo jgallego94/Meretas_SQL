@@ -65,13 +65,13 @@ CREATE TABLE Attributes
 	CONSTRAINT PK_Attibutes PRIMARY KEY (AttributeID)
 )
 GO
-CREATE TABLE ChoiceAttributes
+CREATE TABLE ChoiceAttributes 
 (
 	QuestionID INT NOT NULL,
 	SurveyID INT NOT NULL,
 	ChoiceID INT NOT NULL,
 	AttributeID INT NOT NULL,
-	Value INT NOT NULL,
+	WeightedValue INT NOT NULL,
 	CONSTRAINT PK_ChoiceAttributes PRIMARY KEY (QuestionID, SurveyID, ChoiceID, AttributeID),
 	CONSTRAINT FK_ChoiceAttributesChoices FOREIGN KEY (ChoiceID, QuestionID, SurveyID) REFERENCES Choices(ChoiceID, QuestionID, SurveyID),
 	CONSTRAINT FK_ChoiceAttributesAttributes FOREIGN KEY (AttributeID) REFERENCES Attributes(AttributeID)
@@ -90,7 +90,7 @@ CREATE TABLE CreditCardAttributes
 (
 	CreditCardID INT NOT NULL,
 	AttributeID INT NOT NULL,
-	Value INT NOT NULL,
+	WeightedValue INT NOT NULL,
 	CONSTRAINT PK_CreditCardAttributes PRIMARY KEY (CreditCardID, AttributeID),
 	CONSTRAINT FK_CreditCardAttributesCreditCards FOREIGN KEY (CreditCardID) REFERENCES CreditCards(CreditCardID),
 	CONSTRAINT FK_CreditCardAttributesAttributes FOREIGN KEY (AttributeID) REFERENCES Attributes(AttributeID)
@@ -198,7 +198,7 @@ AS
 				COMMIT TRANSACTION
 GO
 
-CREATE PROCEDURE LoadSurvey
+CREATE PROCEDURE LoadSurvey 
 	@SurveyID INT 
 AS
 	IF (@SurveyID IS NOT NULL)
@@ -207,14 +207,40 @@ AS
 					Choices.ChoiceText
 			FROM Questions, Choices
 			WHERE Questions.QuestionID=Choices.QuestionID AND
-					Questions.SurveyID=(SELECT SurveyID FROM Surveys WHERE SurveyID=@SurveyID)
+					Choices.SurveyID=@SurveyID
 
 		IF @@ERROR <> 0
 			ROLLBACK TRANSACTION
 		ELSE
 			COMMIT TRANSACTION
 GO
+CREATE PROCEDURE ProcessSurvey
+	@MemberID INT,
+	@SurveyID INT,
+	@DateSubmitted DATE,
+	@TimeSubmitted TIME
+AS
+	DECLARE @SurveyResponseID INT
 
+	IF (@SurveyID IS NOT NULL AND @DateSubmitted IS NOT NULL AND @TimeSubmitted IS NOT NULL)
+		BEGIN TRANSACTION
+			INSERT INTO SurveyResponse(MemberID, SurveyID, DateSubmitted, TimeSubmitted)
+			VALUES(@MemberID, @SurveyID, @DateSubmitted, @TimeSubmitted)
+
+			SET @SurveyResponseID=SCOPE_IDENTITY()
+		IF @@ERROR<>0
+			ROLLBACK TRANSACTION
+		ELSE
+		BEGIN
+			COMMIT TRANSACTION
+
+
+		END
+GO
+
+
+
+EXECUTE LoadSurvey 1
 
 EXECUTE AuthenticateLogin 'test@email.ca', 'password123'
 EXECUTE AddMember 'user2@email.ca', 'user2'
