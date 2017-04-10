@@ -197,13 +197,38 @@ AS
 			ELSE
 				COMMIT TRANSACTION
 GO
+CREATE PROCEDURE AddChoiceAttribute
+	@QuestionID INT,
+	@SurveyID INT, 
+	@ChoiceID INT,
+	@AttributeID INT,
+	@WeightedValue INT
+AS
+	IF(@QuestionID IS NOT NULL AND 
+		@SurveyID IS NOT NULL AND 
+			@ChoiceID IS NOT NULL AND 
+				@AttributeID IS NOT NULL AND
+					@WeightedValue IS NOT NULL)
+	BEGIN
+		BEGIN TRANSACTION
+			INSERT INTO ChoiceAttributes(QuestionID, SurveyID, ChoiceID, AttributeID, WeightedValue)
+			VALUES(@QuestionID, @SurveyID, @ChoiceID, @AttributeID, @WeightedValue)
+
+		IF @@ERROR <> 0
+			ROLLBACK TRANSACTION
+		ELSE
+			COMMIT TRANSACTION
+	END
+GO
 
 CREATE PROCEDURE LoadSurvey 
 	@SurveyID INT 
 AS
 	IF (@SurveyID IS NOT NULL)
 		BEGIN TRANSACTION
-			SELECT Questions.QuestionText,
+			SELECT  Choices.QuestionID, 
+			        Choices.ChoiceID,
+					Questions.QuestionText,
 					Choices.ChoiceText
 			FROM Questions, Choices
 			WHERE Questions.QuestionID=Choices.QuestionID AND
@@ -248,7 +273,17 @@ EXECUTE AddAdmin 'admin5@email.ca', 'admin5'
 
 EXECUTE AddSurvey 'Credit Card Survey'
 EXECUTE AddQuestion 1, 'What type of card are you looking for?'
-EXECUTE AddChoice 1, 1, 'Business'
+EXECUTE AddChoice 1, 2, 'Personal'
+EXECUTE AddChoice 1, 2, 'Business'
+
+EXECUTE AddQuestion 1, 'What is your current employment status?'
+EXECUTE AddChoice 1, 2, 'Full Time'
+EXECUTE AddChoice 1, 2, 'Self-employed'
+EXECUTE AddChoice 1, 2, 'Student'
+
+EXECUTE AddQuestion 1, 'What features interest you?'
+EXECUTE 
+
 
 SELECT*FROM Choices
 SELECT*FROM Questions
