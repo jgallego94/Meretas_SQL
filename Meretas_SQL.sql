@@ -198,22 +198,23 @@ AS
 				COMMIT TRANSACTION
 GO
 
-CREATE PROCEDURE LoadSurvey 
-	@SurveyID INT 
+CREATE PROCEDURE LoadQuestions
+	@SurveyID INT
 AS
-	IF (@SurveyID IS NOT NULL)
-		BEGIN TRANSACTION
-			SELECT Questions.QuestionText,
-					Choices.ChoiceText
-			FROM Questions, Choices
-			WHERE Questions.QuestionID=Choices.QuestionID AND
-					Choices.SurveyID=@SurveyID
-
-		IF @@ERROR <> 0
-			ROLLBACK TRANSACTION
-		ELSE
-			COMMIT TRANSACTION
+	SELECT	QuestionID,
+			QuestionText
+	FROM Questions
+	WHERE SurveyID=@SurveyID
 GO
+CREATE PROCEDURE LoadChoices 
+	@QuestionID INT
+AS
+	SELECT	ChoiceID,
+			ChoiceText
+	FROM Choices
+	WHERE QuestionID=@QuestionID
+GO
+
 CREATE PROCEDURE ProcessSurvey
 	@MemberID INT,
 	@SurveyID INT,
@@ -234,7 +235,6 @@ AS
 		BEGIN
 			COMMIT TRANSACTION
 
-
 		END
 GO
 
@@ -254,6 +254,11 @@ SELECT*FROM Choices
 SELECT*FROM Questions
 SELECT*FROM Surveys
 SELECT*FROM Members
+SELECT*FROM QuestionResponse
+SELECT*FROM CreditCards
+
+SELECT*FROM ChoiceAttributes
+SELECT*FROM CreditCardAttributes
 
 DELETE FROM Choices DBCC CHECKIDENT(Choices, RESEED, 0)
 DELETE FROM Members DBCC CHECKIDENT(Members, RESEED, 0)
