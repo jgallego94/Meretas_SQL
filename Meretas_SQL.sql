@@ -98,6 +98,26 @@ CREATE TABLE CreditCardAttributes
 GO
 
 /*Stored Procedures*/
+/*Pre-Conditions*/
+CREATE PROCEDURE AuthenticateLogin
+	@UserEmail NVARCHAR(120), 
+	@UserPassword NVARCHAR(120)
+AS
+	DECLARE @UserRole BIT
+	
+	BEGIN TRANSACTION 
+		SELECT MemberID, IsAdmin
+		FROM Members
+		WHERE MemberEmail=@UserEmail AND 
+				MemberPassword=@UserPassword
+		
+		IF @@ERROR <> 0
+			ROLLBACK TRANSACTION
+		ELSE
+			COMMIT TRANSACTION		
+GO
+
+/*ADD USERS*/
 CREATE PROCEDURE AddMember 
 	@UserEmail NVARCHAR(120),
 	@UserPassword NVARCHAR(120)
@@ -132,24 +152,27 @@ AS
 			ELSE
 				COMMIT TRANSACTION
 GO
-CREATE PROCEDURE AuthenticateLogin
-	@UserEmail NVARCHAR(120), 
-	@UserPassword NVARCHAR(120)
+
+/*ADD CREDIT CARDS*/
+CREATE PROCEDURE AddCreditCard
+	@CreditCardName NVARCHAR(100),
+	@CardImage VARBINARY(MAX),
+	@RedirectLink NVARCHAR(2083)
 AS
-	DECLARE @UserRole BIT
-	
-	BEGIN TRANSACTION 
-		SELECT MemberID, IsAdmin
-		FROM Members
-		WHERE MemberEmail=@UserEmail AND 
-				MemberPassword=@UserPassword
-		
-		IF @@ERROR <> 0
-			ROLLBACK TRANSACTION
-		ELSE
-			COMMIT TRANSACTION		
+	IF(@CreditCardName IS NOT NULL AND @RedirectLink IS NOT NULL)
+		BEGIN
+			BEGIN TRANSACTION
+			INSERT INTO CreditCards(CreditCardName, CardImage, RedirectLink)
+			VALUES(@CreditCardName, @CardImage, @RedirectLink)
+
+			IF @@ERROR<>0
+				ROLLBACK TRANSACTION
+			ELSE
+				COMMIT TRANSACTION
+		END
 GO
 
+/*POPULATE SURVEY*/
 CREATE PROCEDURE AddSurvey
 	@SurveyText NVARCHAR(40)
 AS
@@ -198,6 +221,65 @@ AS
 				COMMIT TRANSACTION
 GO
 
+/*WEIGHTED VALUES*/
+CREATE PROCEDURE AddAttribute 
+	@AttributeText NVARCHAR(20)
+AS
+	IF(@AttributeText IS NOT NULL)
+	BEGIN
+		BEGIN TRANSACTION 
+		INSERT INTO Attributes(AttributeText)
+		VALUES(@AttributeText)
+
+		IF @@ERROR<>0
+			ROLLBACK TRANSACTION
+		ELSE
+			COMMIT TRANSACTION
+	END
+GO
+CREATE PROCEDURE AddCreditCardAttribute
+	@CreditCardID INT,
+	@AttributeID INT,
+	@WeightedValue INT
+AS
+	IF(@CreditCardID IS NOT NULL AND
+		@AttributeID IS NOT NULL AND
+		@WeightedValue IS NOT NULL)
+	BEGIN
+		INSERT INTO CreditCardAttribute(CreditCardID, AttributeID, WeightedValue)
+		VALUES(@CreditCardID, @AttributeID, @WeightedValue)
+
+		IF @@ERROR<>0
+			ROLLBACK TRANSACTION
+		ELSE
+			COMMIT TRANSACTION
+	END
+GO
+CREATE PROCEDURE AddChoiceAttribute
+	@QuestionID INT,
+	@SurveyID INT,
+	@ChoiceID INT,
+	@AttributeID INT,
+	@WeightedValue INT
+AS
+	IF(@QuestionID IS NOT NULL AND 
+		@SurveyID IS NOT NULL AND
+		@ChoiceID IS NOT NULL AND
+		@AttributeID IS NOT NULL AND 
+		@WeightedValue IS NOT NULL)
+	BEGIN
+		BEGIN TRANSACTION 
+		INSERT INTO ChoiceAttributes(QuestionID, SurveyID, ChoiceID, AttributeID, WeightedValue)
+		VALUES(@QuestionID, @SurveyID, @AttributeID, @WeightedValue)
+
+		IF @@ERROR<>0
+			ROLLBACK TRANSACTION
+		ELSE
+			COMMIT TRANSACTION 
+	END
+GO
+
+/*LOAD SURVEY*/
 CREATE PROCEDURE LoadQuestions
 	@SurveyID INT
 AS
@@ -240,21 +322,26 @@ AS
 GO
 
 
-
-EXECUTE LoadSurvey 1
-
 EXECUTE AuthenticateLogin 'test@email.ca', 'password123'
 EXECUTE AddMember 'user2@email.ca', 'user2'
 EXECUTE AddAdmin 'admin5@email.ca', 'admin5'
 
 EXECUTE AddSurvey 'Credit Card Survey'
 EXECUTE AddQuestion 1, 'What type of card are you looking for?'
-EXECUTE AddChoice 1, 1, 'Business'
+EXECUTE AddChoice 1, 2, 'Student'
+
+EXECUTE LoadQuestions 1
+EXECUTE LoadChoices 2
 
 SELECT*FROM Choices
 SELECT*FROM Questions
 SELECT*FROM Surveys
 SELECT*FROM Members
+SELECT*FROM CreditCards
+SELECT*FROM Attributes
+SELECT*FROM CreditCards
+SELECT*FROM CreditCardAttributes
+SELECT*FROM ChoiceAttributes
 
 DELETE FROM Choices DBCC CHECKIDENT(Choices, RESEED, 0)
 DELETE FROM Members DBCC CHECKIDENT(Members, RESEED, 0)
