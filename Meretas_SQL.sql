@@ -316,10 +316,9 @@ CREATE PROCEDURE SubmitSurvey
 	@SurveyID INT,
 	@MemberID INT,
 	@DateSubmitted DATE,
-	@TimeSubmitted TIME
+	@TimeSubmitted TIME,
+	@SurveyResponseID INT OUTPUT
 AS
-	DECLARE @SurveyResponseID INT
-
 	IF(@SurveyID IS NOT NULL AND
 		@DateSubmitted IS NOT NULL AND
 		@TimeSubmitted IS NOT NULL)
@@ -335,7 +334,7 @@ AS
 			ELSE
 			BEGIN
 				COMMIT TRANSACTION
-				RETURN @SurveyResponseID
+				SELECT @SurveyResponseID
 			END
 		END
 GO
@@ -376,12 +375,13 @@ AS
 	ELSE
 		COMMIT TRANSACTION
 GO
-CREATE PROCEDURE GetUserResponse
+CREATE PROCEDURE GetUserResponse 
 	@SurveyID INT,
 	@QuestionID INT,
 	@ChoiceID INT
 AS
-	SELECT ChoiceText
+	SELECT	Choices.ChoiceID, 
+			Choices.ChoiceText
 	FROM Choices, QuestionResponse
 	WHERE	Choices.QuestionID=QuestionResponse.QuestionID
 		AND	Choices.ChoiceID=QuestionResponse.ChoiceID
@@ -432,7 +432,8 @@ EXECUTE AddCreditCardProperties 5, 'Personal', 'Full Time', 'Cash Back', 'No', '
 EXECUTE LoadQuestions 1
 EXECUTE LoadChoices 2
 
-EXECUTE SubmitSurvey 1, NULL, '4/12/2017', '11:24 AM', 1, 1 /*SurveyID, MemberID, DateSubmitted, TimeSubmitted, QuestionID, ChoiceID*/
+DECLARE @SurveyResponse INT
+EXECUTE SubmitSurvey 1, NULL, '4/12/2017', '11:24 AM', @SurveyResponse /*SurveyID, MemberID, DateSubmitted, TimeSubmitted*/
 EXECUTE RecordUserResponse 1, 1, 2, 3 /*SurveyResponseID, SurveyID, QuestionID, ChoiceID*/
 
 EXECUTE GetUserResponse 1, 1, 1 /*SurveyID, QuestionID, ChoiceID*/
@@ -456,3 +457,5 @@ SELECT*FROM ChoiceAttributes
 DELETE FROM Choices DBCC CHECKIDENT(Choices, RESEED, 0)
 DELETE FROM Members DBCC CHECKIDENT(Members, RESEED, 0)
 DELETE FROM Questions DBCC CHECKIDENT(Questions, RESEED, 0) 
+DELETE FROM QuestionResponse
+DELETE FROM SurveyResponse DBCC CHECKIDENT(SurveyResponse, RESEED, 0)
