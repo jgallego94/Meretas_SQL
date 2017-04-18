@@ -178,7 +178,8 @@ CREATE PROCEDURE AddCreditCard
 	@CardImage VARBINARY(MAX),
 	@RedirectLink NVARCHAR(2083),
 	@DateAdded DATE,
-	@TimeAdded TIME(0)
+	@TimeAdded TIME(0),
+	@CreditCardID INT OUTPUT
 AS
 	--TRUE is converted to 1 and FALSE is converted to 0.
 	IF(@CreditCardName IS NOT NULL AND @RedirectLink IS NOT NULL)
@@ -187,10 +188,16 @@ AS
 			INSERT INTO CreditCards(CreditCardName, CardImage, RedirectLink, DateAdded, TimeAdded, IsRemoved)
 			VALUES(@CreditCardName, @CardImage, @RedirectLink, @DateAdded, @TimeAdded, 0)
 
+			SET @CreditCardID = SCOPE_IDENTITY()
+
 			IF @@ERROR<>0
 				ROLLBACK TRANSACTION
 			ELSE
+			BEGIN
 				COMMIT TRANSACTION
+
+				SELECT @CreditCardID
+			END
 		END
 GO
 /*REMOVE CREDIT CARDS*/
@@ -450,6 +457,9 @@ EXECUTE AddSurvey 'Credit Card Survey'
 EXECUTE AddQuestion 1, 'What type of card are you looking for?'
 EXECUTE AddChoice 1, 2, 'Student'
 
+EXECUTE AddQuestion 1, 'Have you recently been discharged from bankruptcy or credit counselling?' --SurveyID,QuestionText
+EXECUTE AddChoice 1, 5, 'No'--SurveyID, QuestionID, ChoiceText
+
 EXECUTE AddCreditCard 'TD Classic Travel Visa Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/classic-travel.jsp', '4/18/2017', '12:10 PM'
 EXECUTE AddCreditCardProperties 1, 'Personal', 'Full Time', 'Travel Rewards', 'No', 'No'
 
@@ -472,9 +482,9 @@ EXECUTE LoadChoices 2
 
 DECLARE @SurveyResponse INT
 EXECUTE SubmitSurvey 1, NULL, '4/12/2017', '11:24 AM', @SurveyResponse /*SurveyID, MemberID, DateSubmitted, TimeSubmitted*/
-EXECUTE RecordUserResponse 1, 1, 2, 3 /*SurveyResponseID, SurveyID, QuestionID, ChoiceID*/
+EXECUTE RecordUserResponse 7, 1, 2, 3 /*SurveyResponseID, SurveyID, QuestionID, ChoiceID*/
 
-EXECUTE GetUserResponse 1, 1, 1, 1 /*SurveyID, QuestionID, ChoiceID*/
+EXECUTE GetUserResponse 1, 1, 1, 3 /*SurveyID, QuestionID, ChoiceID*/
 EXECUTE RecommendCreditCards 'Personal', 'Full Time', 'Cash Back', 'No', 'No' /*Type, EmploymentStatus, Features, Balance, Discharged*/
 
 SELECT*FROM Choices
