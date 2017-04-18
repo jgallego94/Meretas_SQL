@@ -58,12 +58,17 @@ CREATE TABLE QuestionResponse
 	CONSTRAINT FK_QuestionResponseSurveyResponse FOREIGN KEY (SurveyResponseID) REFERENCES SurveyResponse(SurveyResponseID)
 )
 GO
-CREATE TABLE CreditCards
+CREATE TABLE CreditCards 
 (
 	CreditCardID INT IDENTITY(1,1),
 	CreditCardName NVARCHAR(100) NOT NULL,
 	CardImage VARBINARY(MAX) NULL,
 	RedirectLink NVARCHAR(2083) NULL,
+	DateAdded DATE NOT NULL,
+	TimeAdded TIME(0) NOT NULL,
+	IsRemoved BIT NOT NULL,
+	DateRemoved DATE NULL,
+	TimeRemoved TIME(0) NULL,
 	CONSTRAINT PK_CreditCards PRIMARY KEY (CreditCardID)
 )
 GO
@@ -168,22 +173,47 @@ AS
 GO
 
 /*ADD CREDIT CARDS*/
-CREATE PROCEDURE AddCreditCard
+CREATE PROCEDURE AddCreditCard 
 	@CreditCardName NVARCHAR(100),
 	@CardImage VARBINARY(MAX),
-	@RedirectLink NVARCHAR(2083)
+	@RedirectLink NVARCHAR(2083),
+	@DateAdded DATE,
+	@TimeAdded TIME(0)
 AS
+	--TRUE is converted to 1 and FALSE is converted to 0.
 	IF(@CreditCardName IS NOT NULL AND @RedirectLink IS NOT NULL)
 		BEGIN
 			BEGIN TRANSACTION
-			INSERT INTO CreditCards(CreditCardName, CardImage, RedirectLink)
-			VALUES(@CreditCardName, @CardImage, @RedirectLink)
+			INSERT INTO CreditCards(CreditCardName, CardImage, RedirectLink, DateAdded, TimeAdded, IsRemoved)
+			VALUES(@CreditCardName, @CardImage, @RedirectLink, @DateAdded, @TimeAdded, 0)
 
 			IF @@ERROR<>0
 				ROLLBACK TRANSACTION
 			ELSE
 				COMMIT TRANSACTION
 		END
+GO
+/*REMOVE CREDIT CARDS*/
+CREATE PROCEDURE RemoveCreditCard 
+	@CreditCardID INT, 
+	@DateRemoved DATE,
+	@TimeRemoved TIME(0)
+AS
+	IF(@CreditCardID IS NOT NULL AND
+		@DateRemoved IS NOT NULL)
+	BEGIN
+		BEGIN TRANSACTION
+			UPDATE CreditCards
+			SET IsRemoved=1,
+				DateRemoved=@DateRemoved,
+				TimeRemoved=@TimeRemoved
+			WHERE CreditCardID=@CreditCardID
+
+			IF @@ERROR<>0
+				ROLLBACK TRANSACTION
+			ELSE
+				COMMIT TRANSACTION	
+	END
 GO
 
 /*POPULATE SURVEY*/
@@ -378,14 +408,20 @@ GO
 CREATE PROCEDURE GetUserResponse 
 	@SurveyID INT,
 	@QuestionID INT,
-	@ChoiceID INT
+	@ChoiceID INT,
+	@SurveyResponseID INT
 AS
 	SELECT	Choices.ChoiceID, 
 			Choices.ChoiceText
-	FROM Choices, QuestionResponse
+	FROM Choices, QuestionResponse, SurveyResponse
 	WHERE	Choices.QuestionID=QuestionResponse.QuestionID
+		AND QuestionResponse.SurveyResponseID=SurveyResponse.SurveyResponseID
 		AND	Choices.ChoiceID=QuestionResponse.ChoiceID
 		AND Choices.SurveyID=QuestionResponse.SurveyID
+		AND Choices.SurveyID=@SurveyID 
+		AND Choices.QuestionID=@QuestionID
+		AND Choices.ChoiceID=@ChoiceID
+		AND QuestionResponse.SurveyResponseID=@SurveyResponseID
 GO
 CREATE PROCEDURE RecommendCreditCards 
 	@Type NVARCHAR(10),
@@ -414,7 +450,7 @@ EXECUTE AddSurvey 'Credit Card Survey'
 EXECUTE AddQuestion 1, 'What type of card are you looking for?'
 EXECUTE AddChoice 1, 2, 'Student'
 
-EXECUTE AddCreditCard 'TD Classic Travel Visa Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/classic-travel.jsp'
+EXECUTE AddCreditCard 'TD Classic Travel Visa Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/classic-travel.jsp', '4/18/2017', '12:10 PM'
 EXECUTE AddCreditCardProperties 1, 'Personal', 'Full Time', 'Travel Rewards', 'No', 'No'
 
 EXECUTE AddCreditCard 'CIBC Aventura Visa Infinite Card', NULL, 'https://www.cibc.com/en/personal-banking/credit-cards/travel-rewards-cards/aventura-visa-infinite.html'
@@ -429,6 +465,8 @@ EXECUTE AddCreditCardProperties 4, 'Personal', 'Full Time', 'Travel Rewards', 'Y
 EXECUTE AddCreditCard 'TD Cash Back MasterCard Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/cashback-master-card.jsp'
 EXECUTE AddCreditCardProperties 5, 'Personal', 'Full Time', 'Cash Back', 'No', 'No'
 
+EXECUTE RemoveCreditCard 1, '4/18/2017', '12:12 PM'
+
 EXECUTE LoadQuestions 1
 EXECUTE LoadChoices 2
 
@@ -436,7 +474,7 @@ DECLARE @SurveyResponse INT
 EXECUTE SubmitSurvey 1, NULL, '4/12/2017', '11:24 AM', @SurveyResponse /*SurveyID, MemberID, DateSubmitted, TimeSubmitted*/
 EXECUTE RecordUserResponse 1, 1, 2, 3 /*SurveyResponseID, SurveyID, QuestionID, ChoiceID*/
 
-EXECUTE GetUserResponse 1, 1, 1 /*SurveyID, QuestionID, ChoiceID*/
+EXECUTE GetUserResponse 1, 1, 1, 1 /*SurveyID, QuestionID, ChoiceID*/
 EXECUTE RecommendCreditCards 'Personal', 'Full Time', 'Cash Back', 'No', 'No' /*Type, EmploymentStatus, Features, Balance, Discharged*/
 
 SELECT*FROM Choices
@@ -444,18 +482,18 @@ SELECT*FROM Questions
 SELECT*FROM Surveys
 SELECT*FROM Members
 SELECT*FROM CreditCards
+SELECT*FROM CreditCardProperties
 SELECT*FROM Attributes
-SELECT*FROM CreditCards
 SELECT*FROM SurveyResponse
 SELECT*FROM QuestionResponse
-SELECT*FROM CreditCardProperties
 
-/*WEIGHTED VALUES*/
-SELECT*FROM CreditCardAttributes
-SELECT*FROM ChoiceAttributes
 
 DELETE FROM Choices DBCC CHECKIDENT(Choices, RESEED, 0)
 DELETE FROM Members DBCC CHECKIDENT(Members, RESEED, 0)
 DELETE FROM Questions DBCC CHECKIDENT(Questions, RESEED, 0) 
 DELETE FROM QuestionResponse
 DELETE FROM SurveyResponse DBCC CHECKIDENT(SurveyResponse, RESEED, 0)
+
+/*WEIGHTED VALUES*/
+SELECT*FROM CreditCardAttributes
+SELECT*FROM ChoiceAttributes
