@@ -108,8 +108,7 @@ CREATE TABLE CreditCardProperties
 	Type NVARCHAR(10) NOT NULL,
 	EmploymentStatus NVARCHAR(15) NOT NULL,
 	Features NVARCHAR(15) NOT NULL,
-	Balance NVARCHAR(3) NOT NULL,
-	Discharged NVARCHAR(3) NOT NULL,
+	Balance NVARCHAR(3) NOT NULL
 	CONSTRAINT PK_CreditCardProperties PRIMARY KEY (CreditCardID),
 	CONSTRAINT FK_CreditCardPropertiesCreditCards FOREIGN KEY (CreditCardID) REFERENCES CreditCards(CreditCardID)
 )
@@ -395,17 +394,16 @@ AS
 GO
 
 /*Solution 2*/
-CREATE PROCEDURE AddCreditCardProperties
+CREATE PROCEDURE AddCreditCardProperties 
 	@CreditCardID INT,
 	@Type NVARCHAR(10),
 	@EmploymentStatus NVARCHAR(15),
 	@Features NVARCHAR(15),
-	@Balance NVARCHAR(3),
-	@Discharged NVARCHAR(3)
+	@Balance NVARCHAR(3)
 AS
 	BEGIN TRANSACTION
-	INSERT INTO CreditCardProperties(CreditCardID, Type, EmploymentStatus, Features, Balance, Discharged)
-	VALUES(@CreditCardID, @Type, @EmploymentStatus, @Features, @Balance, @Discharged)
+	INSERT INTO CreditCardProperties(CreditCardID, Type, EmploymentStatus, Features, Balance)
+	VALUES(@CreditCardID, @Type, @EmploymentStatus, @Features, @Balance)
 
 	IF @@ERROR<>0
 		ROLLBACK TRANSACTION
@@ -434,8 +432,7 @@ CREATE PROCEDURE RecommendCreditCards
 	@Type NVARCHAR(10),
 	@EmploymentStatus NVARCHAR(15),
 	@Features NVARCHAR(15),
-	@Balance NVARCHAR(3),
-	@Discharged NVARCHAR(3)
+	@Balance NVARCHAR(3)
 AS
 	SELECT TOP 2	CreditCards.CreditCardName 
 	FROM			CreditCards,
@@ -445,9 +442,11 @@ AS
 			AND CreditCardProperties.EmploymentStatus=@EmploymentStatus
 			AND CreditCardProperties.Features=@Features
 			AND CreditCardProperties.Balance=@Balance
-			AND CreditCardProperties.Discharged=@Discharged
 GO
 
+
+
+SELECT * from questions
 
 EXECUTE AuthenticateLogin 'test@email.ca', 'password123'
 EXECUTE AddMember 'user2@email.ca', 'user2'
@@ -455,25 +454,28 @@ EXECUTE AddAdmin 'admin5@email.ca', 'admin5'
 
 EXECUTE AddSurvey 'Credit Card Survey'
 EXECUTE AddQuestion 1, 'What type of card are you looking for?'
-EXECUTE AddChoice 1, 2, 'Student'
+EXECUTE AddChoice 1, 1, 'Personal'
 
 EXECUTE AddQuestion 1, 'Have you recently been discharged from bankruptcy or credit counselling?' --SurveyID,QuestionText
 EXECUTE AddChoice 1, 5, 'No'--SurveyID, QuestionID, ChoiceText
 
+EXECUTE AddQuestion 1, 'Do you plan to carry a balance for longer than 6 months?'
+EXECUTE AddChoice 1, 4, 'No'
+
 EXECUTE AddCreditCard 'TD Classic Travel Visa Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/classic-travel.jsp', '4/18/2017', '12:10 PM'
-EXECUTE AddCreditCardProperties 1, 'Personal', 'Full Time', 'Travel Rewards', 'No', 'No'
+EXECUTE AddCreditCardProperties 1, 'Personal', 'Full Time', 'Travel Rewards', 'No'
 
 EXECUTE AddCreditCard 'CIBC Aventura Visa Infinite Card', NULL, 'https://www.cibc.com/en/personal-banking/credit-cards/travel-rewards-cards/aventura-visa-infinite.html'
-EXECUTE AddCreditCardProperties 2, 'Personal', 'Full Time', 'Cash Back', 'No', 'No'
+EXECUTE AddCreditCardProperties 2, 'Personal', 'Full Time', 'Cash Back', 'No'
 
 EXECUTE AddCreditCard 'CIBC Aventura Visa Card for Business', NULL, 'https://www.cibc.com/ca/small-business/credit-cards/aventura-visa-card-for-bus.html'
-EXECUTE AddCreditCardProperties 3, 'Business', 'Self-employed', 'Travel Rewards', 'No', 'No'
+EXECUTE AddCreditCardProperties 3, 'Business', 'Self-employed', 'Travel Rewards', 'No'
 
 EXECUTE AddCreditCard 'TD Emerald Visa Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/emerald-card.jsp'
-EXECUTE AddCreditCardProperties 4, 'Personal', 'Full Time', 'Travel Rewards', 'Yes', 'No'
+EXECUTE AddCreditCardProperties 4, 'Personal', 'Full Time', 'Travel Rewards', 'Yes'
 
 EXECUTE AddCreditCard 'TD Cash Back MasterCard Card', NULL, 'https://www.tdcanadatrust.com/products-services/banking/credit-cards/view-all-cards/cashback-master-card.jsp'
-EXECUTE AddCreditCardProperties 5, 'Personal', 'Full Time', 'Cash Back', 'No', 'No'
+EXECUTE AddCreditCardProperties 5, 'Personal', 'Full Time', 'Cash Back', 'No'
 
 EXECUTE RemoveCreditCard 1, '4/18/2017', '12:12 PM'
 
@@ -497,13 +499,15 @@ SELECT*FROM Attributes
 SELECT*FROM SurveyResponse
 SELECT*FROM QuestionResponse
 
-
+DELETE FROM Questions DBCC CHECKIDENT(Questions, RESEED, 0) 
 DELETE FROM Choices DBCC CHECKIDENT(Choices, RESEED, 0)
 DELETE FROM Members DBCC CHECKIDENT(Members, RESEED, 0)
-DELETE FROM Questions DBCC CHECKIDENT(Questions, RESEED, 0) 
 DELETE FROM QuestionResponse
 DELETE FROM SurveyResponse DBCC CHECKIDENT(SurveyResponse, RESEED, 0)
+DELETE FROM CreditCards
 
 /*WEIGHTED VALUES*/
 SELECT*FROM CreditCardAttributes
 SELECT*FROM ChoiceAttributes
+
+
